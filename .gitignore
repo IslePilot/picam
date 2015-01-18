@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 
+.wunderground.txt
+try.jpg
+
 # C extensions
 *.so
 
