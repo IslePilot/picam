@@ -17,6 +17,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Revision History:
+  2015-02-01, ksb, added copy of noon file to archive directory
+  2015-02-01, ksb, removed brightness computations as they were not used
+  2015-02-01, ksb, removed averager functions since they aren't needed
   2015-01-17, ksb, created
 """
 
@@ -28,10 +31,8 @@ import os
 import threading
 
 import picamera
-import numpy as np
 import io
 import Image
-from fractions import Fraction
 
 import sys
 sys.path.append("..")
@@ -39,60 +40,13 @@ import __common.ftp_client as ftp_client
 import __common.file_tools as file_tools
 
 # define a version for this file
-VERSION = "1.0.20150117a"
+VERSION = "1.0.20150201a"
 
 def signal_handler(signal, frame):
   print "You pressed Control-c.  Exiting."
   sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 
-class Averager(object):
-  """This class will keep track of previous setting configurations
-  and will return average values to slow setting changes."""
-  def __init__(self, history_max=5):
-    self.history_max = history_max
-    self.reset()
-
-  def reset(self):
-    self.es = []
-    self.awb_gains = []
-    self.brightness = []
-
-  def add_exposure_speed(self, val):
-    # append this value
-    self.es.append(val)
-    
-    # maintain our FIFO history
-    if len(self.es) > self.history_max:
-      # we are full, delete the oldest
-      del(self.es[0])
-          
-  def add_awb_gains(self, val):
-    # append this value
-    self.awb_gains.append(val)
-    
-    # maintain our FIFO history
-    if len(self.awb_gains) > self.history_max:
-      # we are full, delete the oldest
-      del(self.awb_gains[0])
-          
-  def add_brightness(self, val):
-    # append this value
-    self.brightness.append(val)
-    
-    # maintain our FIFO history
-    if len(self.brightness) > self.history_max:
-      # we are full, delete the oldest
-      del(self.brightness[0])
-
-  def average_exposure_speed(self):
-    return np.mean(self.es)
-
-  def average_awb(self):
-    return np.mean(self.awb_gains, axis=0)
-
-  def average_brightness(self):
-    return np.mean(self.brightness)
 
 class TimeLapse(object):
   """This class controls the Raspberry Pi camera for slow changes in settings
@@ -123,12 +77,10 @@ class TimeLapse(object):
                                     framerate=self.framerate,
                                     sensor_mode=self.sensor_mode)
 
-    # Instance the Averager
-    self.averager = Averager(history_max=5)
-
     # save the path
     self.path = path
     self.default_filename = "{:s}/image.jpg".format(self.path)
+    self.noon_path = "{:s}/noon_images".format(self.path)
 
     # save the ftp_flag
     self.ftp_on = ftp_on
@@ -140,8 +92,6 @@ class TimeLapse(object):
     for i in range(3):
       print "Beginning Tuning {:d} of 3".format(i+1)
       self.get_auto_settings()
-      self.averager.add_exposure_speed(self.camera.exposure_speed)    
-      self.averager.add_awb_gains(self.camera.awb_gains)    
       self.capture('try.jpg')
       self.set_exposure_mode()
 
@@ -154,6 +104,8 @@ class TimeLapse(object):
     # we are going to delay 1 second when we start the timer, so subtract 1
     if wait_sec >= 2:
       time.sleep(wait_sec-1)
+    elif wait_sec == 0:
+      time.sleep(59)
 
     # start our timer to go off every requested interval
     signal.setitimer(signal.ITIMER_REAL, 1.0, interval)
@@ -164,21 +116,23 @@ class TimeLapse(object):
   def timer_isr(self, signal, frame):
     """This will automatically be called every interval seconds."""
 
-    # get the semaphore...if we can't get it,  skip this acquisition, don't block
-    if self.timer_semaphore.acquire(False) == False:
-      return
-
     # get our timestamp and filename
     timenow = time.localtime()
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S %Z", timenow)
+
+    # get the semaphore...if we can't get it,  skip this acquisition, don't block
+    if self.timer_semaphore.acquire(False) == False:
+      print "{:s}: TimeLapse.timer_isr: unable to acquire semaphore".format(timestamp)
+      return
+
+    # build our filenames
     filename = "{:s}/{:s}.jpg".format(self.path, time.strftime("%Y%m%d_%H%M%S_%Z", timenow))
+    noonname = "{:s}/{:s}.jpg".format(self.noon_path, time.strftime("%Y%m%d_%H%M%S_%Z", timenow))
+
+    print "{:s}: Beginning capture".format(time.strftime("%Y-%m-%d %H:%M:%S %Z",time.localtime()))
 
     # let the camera settle on its automatic settings
     self.get_auto_settings()
-
-    # add these settings to our history
-    self.averager.add_exposure_speed(self.camera.exposure_speed)    
-    self.averager.add_awb_gains(self.camera.awb_gains)    
 
     # now take the picture
     self.capture(filename)
@@ -192,12 +146,16 @@ class TimeLapse(object):
     # copy to a timestamped filename
     file_tools.copy_file(filename, self.default_filename) 
 
+    # if this is the noon image, copy it to the noon directory
+    if timenow.tm_hour == 12 and timenow.tm_min == 0:
+      file_tools.copy_file(filename, noonname)
+
     # ftp the data to Wunderground
     if self.ftp_on:
       self.ftp_file()
 
     # print that we are done
-    print "waiting..."
+    print "{:s}: Capture complete\n".format(time.strftime("%Y-%m-%d %H:%M:%S %Z",time.localtime()))
 
     # release the semaphore
     self.timer_semaphore.release()
@@ -232,6 +190,7 @@ class TimeLapse(object):
     self.print_current_settings()
 
   def set_exposure_mode(self):
+    """switch between auto and night exposure modes as dictated by the current settings"""
     # find the current exposure speed and mode
     es = self.camera.exposure_speed
     mode = self.camera.exposure_mode
@@ -271,54 +230,13 @@ class TimeLapse(object):
     # save the file
     image.save(filename)
  
-    # compute the images brightness
-    brightness = self.compute_brightness(image=image, zone='all')
-    self.averager.add_brightness(brightness)
-    print "Brightness: Current:{:.2f} Average:{:.2f}".format(brightness, self.averager.average_brightness())
-
     # close the stream
     stream.close()
     
-  def compute_brightness(self, image, zone='all'):
-    """Find the average brightness of the provided PIL image
-
-    image: a PIL image
-
-    returns: brightness"""
-    # first convert the image to greyscale
-    im = image.convert("L")
-
-    # find the size to scale the meter window
-    height, width = im.size
-
-    # find the pixel position of our window
-    if zone == 'center':
-      # use 30% of the frame, centered in the middle
-      top = int(float(height)/2.0 - 0.15*float(height))+1
-      bottom = int(float(height)/2.0 + 0.15*float(height))-1
-      left = int(float(width)/2.0 - 0.15*float(width))+1
-      right = int(float(width)/2.0 + 0.15*float(width))-1
-
-      # crop the image
-      im = im.crop((left, top, right, bottom))
-
-    # compute the number of pixels
-    pixels = im.size[0] * im.size[1]
-
-    # generate a histogram of the greyscale colors
-    h = im.histogram()
-   
-    # normalize the histogram
-    h = [float(i)/pixels for i in h]
-
-    # the histogram now shows the normalized "power" of each
-    # greyscale bin.  Compute a weighted average of the bins
-    # by multiplying the bin power by its position.
-    # bin zero is black (and adds nothing to brightness)
-    # bin(len) is white and adds full power
-    return sum([i*h[i] for i in range(len(h))])
+    return
 
   def add_timestamp(self, timestamp, filename):
+    """Add a timestamp to the image"""
     # place timestamp on the image
     cmd = "convert"
     cmd += " {:s}".format(filename)
@@ -367,13 +285,13 @@ def main():
   print("Press Control-c to exit.")
 
   # instance the TimeLapse class
-  tl = TimeLapse(path='/mnt/keith-pc/timelapse', interval=60, ftp_on=True)
+  tl = TimeLapse(path='/mnt/keith-pc/timelapse', interval=60, ftp_on=False)
 
   # wait here forever
   while True:
     time.sleep(10)
 
-# only run main if this is called directly
+# only run main if this file is called directly
 if __name__ == '__main__':
   main()
 
