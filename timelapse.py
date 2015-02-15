@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Revision History:
+  2015-02-15, ksb, added copy of 01:45 video to an archive directory
   2015-02-01, ksb, added copy of noon file to archive directory
   2015-02-01, ksb, removed brightness computations as they were not used
   2015-02-01, ksb, removed averager functions since they aren't needed
@@ -81,6 +82,8 @@ class TimeLapse(object):
     self.path = path
     self.default_filename = "{:s}/image.jpg".format(self.path)
     self.noon_path = "{:s}/noon_images".format(self.path)
+    self.video_path = "{:s}/daily_videos".format(self.path)
+    self.orig_video = "{:s}/last_24hours.avi".format(self.path)
 
     # save the ftp_flag
     self.ftp_on = ftp_on
@@ -129,26 +132,50 @@ class TimeLapse(object):
     filename = "{:s}/{:s}.jpg".format(self.path, time.strftime("%Y%m%d_%H%M%S_%Z", timenow))
     noonname = "{:s}/{:s}.jpg".format(self.noon_path, time.strftime("%Y%m%d_%H%M%S_%Z", timenow))
 
+    # figure out yesterday
+    yesterday= datetime.datetime.fromtimestamp(time.mktime(timenow)-86400.0)
+    videoname = "{:s}/{:s}.avi".format(self.video_path, yesterday.strftime("%Y-%m-%d"))
+
     print "{:s}: Beginning capture".format(time.strftime("%Y-%m-%d %H:%M:%S %Z",time.localtime()))
 
     # let the camera settle on its automatic settings
     self.get_auto_settings()
 
     # now take the picture
-    self.capture(filename)
+    try:
+      self.capture(filename)
+    except:
+      print "Unable to capture"
 
     # set the auto mode
     self.set_exposure_mode()
 
     # add the timestamp
-    self.add_timestamp(timestamp, filename)
+    try:
+      self.add_timestamp(timestamp, filename)
+    except:
+      print "Unable to add timestamp"
 
-    # copy to a timestamped filename
-    file_tools.copy_file(filename, self.default_filename) 
+    # copy to default filename 
+    try:
+      file_tools.copy_file(filename, self.default_filename) 
+    except:
+      print "Unable to copy file"
 
     # if this is the noon image, copy it to the noon directory
     if timenow.tm_hour == 12 and timenow.tm_min == 0:
-      file_tools.copy_file(filename, noonname)
+      try:
+        file_tools.copy_file(filename, noonname)
+      except:
+        print "Unable to copy noon file"
+
+    # if the time is 00:45, copy the video file to the video directory
+    if timenow.tm_hour == 0 and timenow.tm_min == 45:
+      try:
+        file_tools.copy_file(self.orig_video, videoname)
+      except:
+        print "Unable to copy video file"
+
 
     # ftp the data to Wunderground
     if self.ftp_on:
