@@ -194,7 +194,10 @@ class TimeLapse(object):
     self.camera.iso = 0                 # automatic, required to allow exposure_mode to work
     self.camera.shutter_speed = 0       # automatic
     self.camera.exposure_mode = self.exposure_mode
-    self.camera.awb_mode = 'auto'       # automatic
+    #self.camera.awb_mode = 'auto'       # automatic
+    self.camera.awb_mode = 'horizon'       # automatic
+    self.camera.saturation = 0
+    #self.camera.awb_gains = (1.00, 0.60)      # automatic
 
     # wait for the camera to settle down
     count = 0
