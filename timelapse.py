@@ -65,7 +65,7 @@ class TimeLapse(object):
     # The sensor mode determines the maximum and minimum framerates.
     # Mode 2 allows frame rates between 1/1 and 15/1.
     # Mode 3 allows frame rates between 1/6 and 1/1.
-    # Mode 2 is useful for daytime, Mode 2 is useful for low-light situations
+    # Mode 2 is useful for daytime, Mode 3 is useful for low-light situations
     # The framerate matters because the shutter speed is limited by the framerate.
     # Start off assuming it is daytime
     self.sensor_mode = 2
@@ -134,7 +134,8 @@ class TimeLapse(object):
 
     # figure out yesterday
     yesterday= datetime.datetime.fromtimestamp(time.mktime(timenow)-86400.0)
-    videoname = "{:s}/{:s}.avi".format(self.video_path, yesterday.strftime("%Y-%m-%d"))
+    videoname = "{:s}/{:s}.avi".format(self.video_path, yesterday.strftime("%Y-%m-%d_CAMERA"))
+    adsbvideo = "{:s}/{:s}.avi".format(self.video_path, yesterday.strftime("%Y-%m-%d_ADSB"))
 
     print "{:s}: Beginning capture".format(time.strftime("%Y-%m-%d %H:%M:%S %Z",time.localtime()))
 
@@ -170,9 +171,10 @@ class TimeLapse(object):
         print "Unable to copy noon file"
 
     # if the time is 00:45, copy the video file to the video directory
-    if timenow.tm_hour == 0 and timenow.tm_min == 45:
+    if timenow.tm_hour == 0 and timenow.tm_min == 55:
       try:
         file_tools.copy_file(self.orig_video, videoname)
+        file_tools.copy_file("%s/ADSB/ADSB_Last24Hours.avi"%self.path, adsbvideo)
       except:
         print "Unable to copy video file"
 
@@ -249,7 +251,7 @@ class TimeLapse(object):
     stream = io.BytesIO()
 
     # capture the stream, set our desired resolution to use the Pi GPU
-    self.camera.capture(stream, format='jpeg', resize=(1440, 1080))
+    self.camera.capture(stream, format='jpeg', resize=(1280, 960))
 
     # "Rewind" the stream so we can read its contents
     stream.seek(0)
@@ -267,13 +269,14 @@ class TimeLapse(object):
 
   def add_timestamp(self, timestamp, filename):
     """Add a timestamp to the image"""
+    label = "Dir: WNW, Time: %s"%timestamp
     # place timestamp on the image
     cmd = "convert"
     cmd += " {:s}".format(filename)
     cmd += " -font fixed -pointsize 50"
     cmd += " -draw \"gravity southwest "
-    cmd += " fill black text 0,12 '{:s}'".format(timestamp)
-    cmd += " fill white text 1,11 '{:s}'\"".format(timestamp)
+    cmd += " fill black text 0,12 '{:s}'".format(label)
+    cmd += " fill white text 1,11 '{:s}'\"".format(label)
     cmd += " {:s}".format(filename)
     print "Adding timestamp..."
 
@@ -315,7 +318,7 @@ def main():
   print("Press Control-c to exit.")
 
   # instance the TimeLapse class
-  tl = TimeLapse(path='/mnt/keith-pc/timelapse', interval=60, ftp_on=False)
+  tl = TimeLapse(path='/mnt/keith-pc/timelapse', interval=60, ftp_on=True)
 
   # wait here forever
   while True:
