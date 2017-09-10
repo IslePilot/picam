@@ -303,9 +303,16 @@ class TimeLapse(object):
     user = username
     pw = password
 
-    ftp = ftp_client.FTP_Client(server, user, pw)
-    ftp.binary_put(self.default_filename)
-    ftp.disconnect()
+    print "connecting to %s"%server
+    try:
+      ftp = ftp_client.FTP_Client(server, user, pw)
+    except:
+      print "unable to connect to FTP server %s as %s"%(server, user)
+    else:
+      ftp.binary_put(self.default_filename)
+      ftp.disconnect()
+
+    return
 
 
 def main():
