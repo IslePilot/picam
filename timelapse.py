@@ -303,6 +303,7 @@ class TimeLapse(object):
     user = username
     pw = password
 
+
     print "connecting to %s"%server
     try:
       ftp = ftp_client.FTP_Client(server, user, pw)
@@ -325,7 +326,7 @@ def main():
   print("Press Control-c to exit.")
 
   # instance the TimeLapse class
-  tl = TimeLapse(path='/mnt/keith-pc/timelapse', interval=60, ftp_on=True)
+  tl = TimeLapse(path='/mnt/keith-pc/timelapse', interval=60, ftp_on=False)
 
   # wait here forever
   while True:
