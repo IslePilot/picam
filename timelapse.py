@@ -41,7 +41,7 @@ import __common.ftp_client as ftp_client
 import __common.file_tools as file_tools
 
 # define a version for this file
-VERSION = "1.0.20150201a"
+VERSION = "1.0.20171231a"
 
 def signal_handler(signal, frame):
   print "You pressed Control-c.  Exiting."
@@ -74,6 +74,7 @@ class TimeLapse(object):
 
     # Instance the PiCamera
     # All images will be captured via the image port which always uses 2592x1944.
+    print "creating PiCamera"
     self.camera = picamera.PiCamera(resolution=(2592, 1944),
                                     framerate=self.framerate,
                                     sensor_mode=self.sensor_mode)
@@ -89,6 +90,7 @@ class TimeLapse(object):
     self.ftp_on = ftp_on
 
     # create the timer semphore, as we only want to run one at a time
+    print "creating Semaphore"
     self.timer_semaphore = threading.Semaphore(1)
 
     # get the initial settings
@@ -135,7 +137,7 @@ class TimeLapse(object):
     # figure out yesterday
     yesterday= datetime.datetime.fromtimestamp(time.mktime(timenow)-86400.0)
     videoname = "{:s}/{:s}.avi".format(self.video_path, yesterday.strftime("%Y-%m-%d_CAMERA"))
-    adsbvideo = "{:s}/{:s}.avi".format(self.video_path, yesterday.strftime("%Y-%m-%d_ADSB"))
+    #adsbvideo = "{:s}/{:s}.avi".format(self.video_path, yesterday.strftime("%Y-%m-%d_ADSB"))
 
     print "{:s}: Beginning capture".format(time.strftime("%Y-%m-%d %H:%M:%S %Z",time.localtime()))
 
@@ -174,7 +176,7 @@ class TimeLapse(object):
     if timenow.tm_hour == 0 and timenow.tm_min == 55:
       try:
         file_tools.copy_file(self.orig_video, videoname)
-        file_tools.copy_file("%s/ADSB/ADSB_Last24Hours.avi"%self.path, adsbvideo)
+        #file_tools.copy_file("%s/ADSB/ADSB_Last24Hours.avi"%self.path, adsbvideo)
       except:
         print "Unable to copy video file"
 
