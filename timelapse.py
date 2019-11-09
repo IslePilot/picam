@@ -33,7 +33,8 @@ import threading
 
 import picamera
 import io
-import Image
+#import Image
+from PIL import Image
 
 import sys
 sys.path.append("..")
@@ -328,7 +329,7 @@ def main():
   print("Press Control-c to exit.")
 
   # instance the TimeLapse class
-  tl = TimeLapse(path='/mnt/keith-pc/timelapse', interval=60, ftp_on=False)
+  tl = TimeLapse(path='/media/keith-pc/timelapse', interval=60, ftp_on=False)
 
   # wait here forever
   while True:
