@@ -329,7 +329,7 @@ def main():
   print("Press Control-c to exit.")
 
   # instance the TimeLapse class
-  tl = TimeLapse(path='/media/keith-pc/timelapse', interval=60, ftp_on=False)
+  tl = TimeLapse(path='/home/pi/Share/timelapse', interval=60, ftp_on=False)
 
   # wait here forever
   while True:
