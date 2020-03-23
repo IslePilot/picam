@@ -84,8 +84,8 @@ class TimeLapse(object):
     self.path = path
     self.default_filename = "{:s}/image.jpg".format(self.path)
     self.noon_path = "{:s}/noon_images".format(self.path)
-    self.video_path = "{:s}/daily_videos".format(self.path)
-    self.orig_video = "{:s}/last_24hours.avi".format(self.path)
+    #self.video_path = "{:s}/daily_videos".format(self.path)
+    #self.orig_video = "{:s}/last_24hours.avi".format(self.path)
 
     # save the ftp_flag
     self.ftp_on = ftp_on
@@ -137,7 +137,7 @@ class TimeLapse(object):
 
     # figure out yesterday
     yesterday= datetime.datetime.fromtimestamp(time.mktime(timenow)-86400.0)
-    videoname = "{:s}/{:s}.avi".format(self.video_path, yesterday.strftime("%Y-%m-%d_CAMERA"))
+    #videoname = "{:s}/{:s}.avi".format(self.video_path, yesterday.strftime("%Y-%m-%d_CAMERA"))
     #adsbvideo = "{:s}/{:s}.avi".format(self.video_path, yesterday.strftime("%Y-%m-%d_ADSB"))
 
     print "{:s}: Beginning capture".format(time.strftime("%Y-%m-%d %H:%M:%S %Z",time.localtime()))
@@ -174,12 +174,12 @@ class TimeLapse(object):
         print "Unable to copy noon file"
 
     # if the time is 00:45, copy the video file to the video directory
-    if timenow.tm_hour == 0 and timenow.tm_min == 55:
-      try:
-        file_tools.copy_file(self.orig_video, videoname)
-        #file_tools.copy_file("%s/ADSB/ADSB_Last24Hours.avi"%self.path, adsbvideo)
-      except:
-        print "Unable to copy video file"
+    #if timenow.tm_hour == 0 and timenow.tm_min == 55:
+    #  try:
+    #    #file_tools.copy_file(self.orig_video, videoname)
+    #    #file_tools.copy_file("%s/ADSB/ADSB_Last24Hours.avi"%self.path, adsbvideo)
+    #  except:
+    #    print "Unable to copy video file"
 
 
     # ftp the data to Wunderground
